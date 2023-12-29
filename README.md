@@ -3,8 +3,9 @@ Multi worker distributed deep learning from scratch
 
 
 ## Implementation to do:
-- Define proto -> check if bidirectional streaming is best option?
-- Interface needed is SetWeights and SyncGrads
+- Define proto -> start with request/response (using futures), move to streaming later
+for larger weights/grad sizes
+- Interface needed is RunStep(weights) returns Grads
 - create server and client objects
 - Create DistModel class -> wraps the server, client, ml model
 - Simple case first, handle failure events later

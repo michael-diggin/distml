@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package train;
+
+service Trainer {
+    rpc RunStep(Weights) returns (Grads) {}
+}
+
+message Weights {
+    int32 epoch = 1;
+    int32 step = 2;
+    bytes data = 3;
+}
+
+message Grads {
+    int32 epoch = 1;
+    int32 step = 2;
+    bytes data = 3;
+}
+
+// Command to generate pb files.
+// python -m grpc_tools.protoc -Iproto --python_out=proto/. --pyi_out=proto/. --grpc_python_out=proto/.  proto/train.proto
