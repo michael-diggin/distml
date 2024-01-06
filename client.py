@@ -6,9 +6,9 @@ import grpc
 def run_train_step(stub):
     input = "Is it working?"
     data = str.encode(input)
-    req = train_pb2.Weights(epoch=0, step=1, data=data)
+    req = train_pb2.RunStepReuest(epoch=0, step=1, data=data)
     resp = stub.RunStep(req)
-    output = resp.data.decode()
+    output = resp.grads.decode()
     print(output)
     return
 

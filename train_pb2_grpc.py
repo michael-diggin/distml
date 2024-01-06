@@ -16,8 +16,8 @@ class TrainerStub(object):
         """
         self.RunStep = channel.unary_unary(
                 '/train.Trainer/RunStep',
-                request_serializer=train__pb2.Weights.SerializeToString,
-                response_deserializer=train__pb2.Grads.FromString,
+                request_serializer=train__pb2.RunStepReuest.SerializeToString,
+                response_deserializer=train__pb2.RunStepResponse.FromString,
                 )
 
 
@@ -35,8 +35,8 @@ def add_TrainerServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'RunStep': grpc.unary_unary_rpc_method_handler(
                     servicer.RunStep,
-                    request_deserializer=train__pb2.Weights.FromString,
-                    response_serializer=train__pb2.Grads.SerializeToString,
+                    request_deserializer=train__pb2.RunStepReuest.FromString,
+                    response_serializer=train__pb2.RunStepResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -60,7 +60,7 @@ class Trainer(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/train.Trainer/RunStep',
-            train__pb2.Weights.SerializeToString,
-            train__pb2.Grads.FromString,
+            train__pb2.RunStepReuest.SerializeToString,
+            train__pb2.RunStepResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

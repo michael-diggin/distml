@@ -4,7 +4,7 @@ from typing import ClassVar as _ClassVar, Optional as _Optional
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
-class Weights(_message.Message):
+class RunStepReuest(_message.Message):
     __slots__ = ("epoch", "step", "data")
     EPOCH_FIELD_NUMBER: _ClassVar[int]
     STEP_FIELD_NUMBER: _ClassVar[int]
@@ -14,12 +14,14 @@ class Weights(_message.Message):
     data: bytes
     def __init__(self, epoch: _Optional[int] = ..., step: _Optional[int] = ..., data: _Optional[bytes] = ...) -> None: ...
 
-class Grads(_message.Message):
-    __slots__ = ("epoch", "step", "data")
+class RunStepResponse(_message.Message):
+    __slots__ = ("epoch", "step", "grads", "loss")
     EPOCH_FIELD_NUMBER: _ClassVar[int]
     STEP_FIELD_NUMBER: _ClassVar[int]
-    DATA_FIELD_NUMBER: _ClassVar[int]
+    GRADS_FIELD_NUMBER: _ClassVar[int]
+    LOSS_FIELD_NUMBER: _ClassVar[int]
     epoch: int
     step: int
-    data: bytes
-    def __init__(self, epoch: _Optional[int] = ..., step: _Optional[int] = ..., data: _Optional[bytes] = ...) -> None: ...
+    grads: bytes
+    loss: bytes
+    def __init__(self, epoch: _Optional[int] = ..., step: _Optional[int] = ..., grads: _Optional[bytes] = ..., loss: _Optional[bytes] = ...) -> None: ...
