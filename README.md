@@ -8,9 +8,10 @@ for larger weights/grad sizes
 - Interface needed is RunStep(weights) returns Grads
 - create server and client objects
 - Create DistModel class -> wraps the server, client, ml model
+- Serialising lists of numpy arrays and TF eager tensors
 - Simple case first, handle failure events later
 
-Weights/grads are coupled with epoch number and bacth number
+Weights/grads are coupled with epoch number and batch number
 
 
 For 'main', flow is:
