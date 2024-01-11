@@ -4,6 +4,7 @@ package train;
 
 service Trainer {
     rpc RunStep(RunStepReuest) returns (RunStepResponse) {}
+    rpc Finish(FinishRequest) returns (FinishResponse) {}
 }
 
 message RunStepReuest {
@@ -18,6 +19,10 @@ message RunStepResponse {
     bytes grads = 3;
     bytes loss = 4;
 }
+
+message FinishRequest {}
+
+message FinishResponse {}
 
 // Command to generate pb files.
 // python -m grpc_tools.protoc -Iproto --python_out=. --pyi_out=. --grpc_python_out=.  proto/train.proto

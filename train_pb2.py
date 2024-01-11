@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0btrain.proto\x12\x05train\":\n\rRunStepReuest\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"K\n\x0fRunStepResponse\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\r\n\x05grads\x18\x03 \x01(\x0c\x12\x0c\n\x04loss\x18\x04 \x01(\x0c\x32\x44\n\x07Trainer\x12\x39\n\x07RunStep\x12\x14.train.RunStepReuest\x1a\x16.train.RunStepResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0btrain.proto\x12\x05train\":\n\rRunStepReuest\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x03 \x01(\x0c\"K\n\x0fRunStepResponse\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\r\n\x05grads\x18\x03 \x01(\x0c\x12\x0c\n\x04loss\x18\x04 \x01(\x0c\"\x0f\n\rFinishRequest\"\x10\n\x0e\x46inishResponse2}\n\x07Trainer\x12\x39\n\x07RunStep\x12\x14.train.RunStepReuest\x1a\x16.train.RunStepResponse\"\x00\x12\x37\n\x06\x46inish\x12\x14.train.FinishRequest\x1a\x15.train.FinishResponse\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -25,6 +25,10 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _globals['_RUNSTEPREUEST']._serialized_end=80
   _globals['_RUNSTEPRESPONSE']._serialized_start=82
   _globals['_RUNSTEPRESPONSE']._serialized_end=157
-  _globals['_TRAINER']._serialized_start=159
-  _globals['_TRAINER']._serialized_end=227
+  _globals['_FINISHREQUEST']._serialized_start=159
+  _globals['_FINISHREQUEST']._serialized_end=174
+  _globals['_FINISHRESPONSE']._serialized_start=176
+  _globals['_FINISHRESPONSE']._serialized_end=192
+  _globals['_TRAINER']._serialized_start=194
+  _globals['_TRAINER']._serialized_end=319
 # @@protoc_insertion_point(module_scope)

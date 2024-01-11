@@ -3,16 +3,16 @@ Multi worker distributed deep learning from scratch
 
 
 ## Implementation to do:
-- Define proto -> start with request/response (using futures), move to streaming later
-for larger weights/grad sizes
-- Interface needed is RunStep(weights) returns Grads
-- create server and client objects
-- Create DistModel class -> wraps the server, client, ml model
-- Serialising lists of numpy arrays and TF eager tensors
-- Simple case first, handle failure events later
 
-Weights/grads are coupled with epoch number and batch number
+- Serialise lists of numpy arrays and tf eager tensors
+- implement get_next_batch function
+- implement run_train_step
+- implement update_params
+- implement fit epoch/step loop
+- implement metrics aggregation
+- implement checkpointing
 
+- Move to bi-directional streaming for larger data transfers
 
 For 'main', flow is:
 - Stream weights to learning nodes

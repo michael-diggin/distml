@@ -25,3 +25,11 @@ class RunStepResponse(_message.Message):
     grads: bytes
     loss: bytes
     def __init__(self, epoch: _Optional[int] = ..., step: _Optional[int] = ..., grads: _Optional[bytes] = ..., loss: _Optional[bytes] = ...) -> None: ...
+
+class FinishRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class FinishResponse(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
