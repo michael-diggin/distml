@@ -4,13 +4,13 @@ Multi worker distributed deep learning from scratch
 
 ## Implementation to do:
 
-- Serialise lists of numpy arrays and tf eager tensors
 - implement get_next_batch function
 - implement run_train_step
 - implement update_params
 - implement fit epoch/step loop
 - implement metrics aggregation
-- implement checkpointing
+- implement checkpointing (weights and epoch)
+- wait for workers to be available on startup
 
 - Move to bi-directional streaming for larger data transfers
 

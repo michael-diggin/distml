@@ -4,6 +4,9 @@ from concurrent import futures
 import grpc
 import os
 import time
+import numpy as np
+import tensorflow as tf
+import serialize
 
 class TrainerServer(train_pb2_grpc.TrainerServicer):
     def __init__(self, dist_config, model, loss_fn, optimizer):
@@ -65,9 +68,9 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         for epoch in range(epochs):
             futures = []
             # self.model.get_weights() <- used to get params to send to other nodes
-            input = f"At epoch {epoch}. Run a training step."
-            data = str.encode(input)
-            req = train_pb2.RunStepReuest(epoch=epoch, step=0, data=data)
+            weights = [np.random.randn(2, 2)]
+            weights = serialize.weights_to_proto(weights)
+            req = train_pb2.RunStepReuest(epoch=epoch, step=0, weights=weights)
             for addr in self.workers:
                 futures.append(self._send_train_request(addr, req))
         
@@ -76,7 +79,8 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
             print(f"Node {self.node_ix} handled task")
             for f in futures:
                 resp = f.result()
-                print(resp.grads.decode())
+                grads = serialize.grads_from_proto(resp.grads)
+                print(grads[0])
             time.sleep(1)
 
         print("Finished Training")
@@ -100,11 +104,12 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         # get preds, loss, grads
         # return response
         print("Running a Training Step!")
-        req_data = request.data.decode()
-        print(req_data)
+        weights = serialize.weights_from_proto(request.weights)
+        print(weights)
+        grads = tf.constant(weights)
+        grads = serialize.grads_to_proto(grads)
         self.epoch = request.epoch
-        output_data = str.encode(f"Node {self.node_ix} handled task")
-        resp = train_pb2.RunStepResponse(epoch=request.epoch, step=request.step, grads=output_data)
+        resp = train_pb2.RunStepResponse(epoch=request.epoch, step=request.step, grads=grads)
         return resp
     
     def Finish(self, request, context):
@@ -143,7 +148,7 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
 if __name__ == "__main__":
     conf = {
         "leader": "0",
-        "servers": ["localhost:1234", "localhost:1235"],
+        "servers": ["localhost:1234"]#, "localhost:1235"],
     }
     node_ix = os.environ.get("NODE", "")
     port = os.environ.get("PORT", 1234)
@@ -152,5 +157,5 @@ if __name__ == "__main__":
 
     print(f"Serving on {port}")
     ts = TrainerServer(conf, None, None, None)
-    ts.fit(5, None, None, None)
+    ts.fit(1, None, None, None)
 

@@ -10,14 +10,32 @@ service Trainer {
 message RunStepReuest {
     int32 epoch = 1;
     int32 step = 2;
-    bytes data = 3;
+    repeated Ndarray weights = 3;
 }
 
 message RunStepResponse {
     int32 epoch = 1;
     int32 step = 2;
-    bytes grads = 3;
+    repeated TFTensor grads = 3;
     bytes loss = 4;
+}
+
+enum DataType {
+    UNKNOWN = 0;
+    FLOAT_16 = 1;
+    FLOAT_32 = 2;
+    FLOAT_64 = 3;
+}
+
+message TFTensor {
+    bytes data = 1;
+    DataType dtype = 2;
+}
+
+message Ndarray {
+    bytes data = 1;
+    DataType dtype = 2;
+    repeated int32 shape = 3;
 }
 
 message FinishRequest {}
