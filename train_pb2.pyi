@@ -36,8 +36,8 @@ class RunStepResponse(_message.Message):
     epoch: int
     step: int
     grads: _containers.RepeatedCompositeFieldContainer[TFTensor]
-    loss: bytes
-    def __init__(self, epoch: _Optional[int] = ..., step: _Optional[int] = ..., grads: _Optional[_Iterable[_Union[TFTensor, _Mapping]]] = ..., loss: _Optional[bytes] = ...) -> None: ...
+    loss: TFTensor
+    def __init__(self, epoch: _Optional[int] = ..., step: _Optional[int] = ..., grads: _Optional[_Iterable[_Union[TFTensor, _Mapping]]] = ..., loss: _Optional[_Union[TFTensor, _Mapping]] = ...) -> None: ...
 
 class TFTensor(_message.Message):
     __slots__ = ("data", "dtype")

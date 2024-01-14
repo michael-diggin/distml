@@ -2,7 +2,6 @@ import train_pb2_grpc
 import train_pb2
 from concurrent import futures
 import grpc
-import os
 import time
 import numpy as np
 import tensorflow as tf
@@ -16,7 +15,8 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         self.epoch = 0
         self.batch_number = 0
         self.batch_split = 1 + len(dist_config["servers"]) # 1 leader and other servers
-        self.node_ix = conf["node"]
+        self.node_ix = dist_config["node"]
+        self.node_int = int(self.node_ix)
         self.server = None
         self._channels = []
         self.workers = [] # list of other server worker addresses
@@ -65,23 +65,28 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
             return
         # otherwise
         print("-------------- Starting Training --------------")
+        step = 0
         for epoch in range(epochs):
             futures = []
-            # self.model.get_weights() <- used to get params to send to other nodes
-            weights = [np.random.randn(2, 2)]
-            weights = serialize.weights_to_proto(weights)
-            req = train_pb2.RunStepReuest(epoch=epoch, step=0, weights=weights)
+            weights = serialize.weights_to_proto(self.model.get_weights())
+            req = train_pb2.RunStepReuest(epoch=epoch, step=step, weights=weights)
             for addr in self.workers:
                 futures.append(self._send_train_request(addr, req))
-        
-            # would process on the leader's node as well
-            # now collect results from workers
-            print(f"Node {self.node_ix} handled task")
+            
+            loss, grads = self._run_model_train_step(epoch, step)
+            losses = [loss]
+            gradients = [grads]
             for f in futures:
                 resp = f.result()
-                grads = serialize.grads_from_proto(resp.grads)
-                print(grads[0])
-            time.sleep(1)
+                f_grads = serialize.grads_from_proto(resp.grads)
+                f_loss = serialize.loss_from_proto(resp.loss)
+                losses.append(f_loss)
+                gradients.append(f_grads)
+
+            epoch_loss = np.mean(losses)
+            print(f"Epoch Loss: {epoch_loss}")
+
+            self._update_with_grads(gradients)
 
         print("Finished Training")
         for addr in self.workers:
@@ -97,19 +102,15 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
 
 
     def RunStep(self, request, context):
-        # this is where the ML model would run a step
-        # weights = request.data
-        # model.set_weights(weights)
-        # get next batch
-        # get preds, loss, grads
-        # return response
         print("Running a Training Step!")
         weights = serialize.weights_from_proto(request.weights)
-        print(weights)
-        grads = tf.constant(weights)
+        self.model.set_weights(weights)
+        loss, grads = self._run_model_train_step(request.epoch, request.step)
+        print(f"Local loss: {loss.numpy()}")
         grads = serialize.grads_to_proto(grads)
+        loss = serialize.loss_to_proto(loss)
         self.epoch = request.epoch
-        resp = train_pb2.RunStepResponse(epoch=request.epoch, step=request.step, grads=grads)
+        resp = train_pb2.RunStepResponse(epoch=request.epoch, step=request.step, loss=loss, grads=grads)
         return resp
     
     def Finish(self, request, context):
@@ -118,44 +119,27 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         return train_pb2.FinishResponse()
 
     def _run_model_train_step(self, epoch, batch_number):
-        # get next batch of data
-        # run forward pass
-        # y_pred = self.model(x_batch)
-        # get loss
-        # l = self.loss_fn(y_pred, y_batch)
-        # get grads
-        # grads = tape.gradients(self.model.trainable_varaibles)
-        # return l, grads
-        pass
+        # TODO: get next batch of data
+        x, y = self._get_batch(None, None)
+        with tf.GradientTape() as tape:
+            preds = self.model(x)
+            loss = self.loss_fn(y, preds)
+        grads = tape.gradient(loss, self.model.trainable_variables)
+        return loss, grads
 
     def _get_batch(self, epoch, step):
-        # if data is not an iterator, just pull out the next
-        # grouping
-        # otherwise iterate with next()
-        # if epoch of step is different to what is expected
-        # trust it and override local. Should only happen in a failure event
-        # then split it with node_ix
-        pass
+        # for now - just all the data
+        x_batch = self.x_data
+        y_batch = self.y_data
+        return x_batch, y_batch
 
     def _update_with_grads(self, grads):
         # combine the N sets of grads
-        # self.optimizer.apply_gradients(zip(grads, model_vars))
-        pass
-
-
-
-
-if __name__ == "__main__":
-    conf = {
-        "leader": "0",
-        "servers": ["localhost:1234"]#, "localhost:1235"],
-    }
-    node_ix = os.environ.get("NODE", "")
-    port = os.environ.get("PORT", 1234)
-    conf["node"] = node_ix
-    conf["port"] = port
-
-    print(f"Serving on {port}")
-    ts = TrainerServer(conf, None, None, None)
-    ts.fit(1, None, None, None)
-
+        # has to be a better way to accumulate them
+        gradients = grads[0]
+        for i in range(len(grads[0])):
+            for g in range(1, len(grads)):
+                gradients[i] += grads[g][i]
+            gradients[i] /= len(grads)
+        self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
+        return

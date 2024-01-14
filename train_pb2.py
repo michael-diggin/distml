@@ -14,27 +14,27 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0btrain.proto\x12\x05train\"M\n\rRunStepReuest\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\x1f\n\x07weights\x18\x03 \x03(\x0b\x32\x0e.train.Ndarray\"\\\n\x0fRunStepResponse\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\x1e\n\x05grads\x18\x03 \x03(\x0b\x32\x0f.train.TFTensor\x12\x0c\n\x04loss\x18\x04 \x01(\x0c\"8\n\x08TFTensor\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x1e\n\x05\x64type\x18\x02 \x01(\x0e\x32\x0f.train.DataType\"F\n\x07Ndarray\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x1e\n\x05\x64type\x18\x02 \x01(\x0e\x32\x0f.train.DataType\x12\r\n\x05shape\x18\x03 \x03(\x05\"\x0f\n\rFinishRequest\"\x10\n\x0e\x46inishResponse*A\n\x08\x44\x61taType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x0c\n\x08\x46LOAT_16\x10\x01\x12\x0c\n\x08\x46LOAT_32\x10\x02\x12\x0c\n\x08\x46LOAT_64\x10\x03\x32}\n\x07Trainer\x12\x39\n\x07RunStep\x12\x14.train.RunStepReuest\x1a\x16.train.RunStepResponse\"\x00\x12\x37\n\x06\x46inish\x12\x14.train.FinishRequest\x1a\x15.train.FinishResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0btrain.proto\x12\x05train\"M\n\rRunStepReuest\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\x1f\n\x07weights\x18\x03 \x03(\x0b\x32\x0e.train.Ndarray\"m\n\x0fRunStepResponse\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\x1e\n\x05grads\x18\x03 \x03(\x0b\x32\x0f.train.TFTensor\x12\x1d\n\x04loss\x18\x04 \x01(\x0b\x32\x0f.train.TFTensor\"8\n\x08TFTensor\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x1e\n\x05\x64type\x18\x02 \x01(\x0e\x32\x0f.train.DataType\"F\n\x07Ndarray\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x1e\n\x05\x64type\x18\x02 \x01(\x0e\x32\x0f.train.DataType\x12\r\n\x05shape\x18\x03 \x03(\x05\"\x0f\n\rFinishRequest\"\x10\n\x0e\x46inishResponse*A\n\x08\x44\x61taType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x0c\n\x08\x46LOAT_16\x10\x01\x12\x0c\n\x08\x46LOAT_32\x10\x02\x12\x0c\n\x08\x46LOAT_64\x10\x03\x32}\n\x07Trainer\x12\x39\n\x07RunStep\x12\x14.train.RunStepReuest\x1a\x16.train.RunStepResponse\"\x00\x12\x37\n\x06\x46inish\x12\x14.train.FinishRequest\x1a\x15.train.FinishResponse\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'train_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
-  _globals['_DATATYPE']._serialized_start=360
-  _globals['_DATATYPE']._serialized_end=425
+  _globals['_DATATYPE']._serialized_start=377
+  _globals['_DATATYPE']._serialized_end=442
   _globals['_RUNSTEPREUEST']._serialized_start=22
   _globals['_RUNSTEPREUEST']._serialized_end=99
   _globals['_RUNSTEPRESPONSE']._serialized_start=101
-  _globals['_RUNSTEPRESPONSE']._serialized_end=193
-  _globals['_TFTENSOR']._serialized_start=195
-  _globals['_TFTENSOR']._serialized_end=251
-  _globals['_NDARRAY']._serialized_start=253
-  _globals['_NDARRAY']._serialized_end=323
-  _globals['_FINISHREQUEST']._serialized_start=325
-  _globals['_FINISHREQUEST']._serialized_end=340
-  _globals['_FINISHRESPONSE']._serialized_start=342
-  _globals['_FINISHRESPONSE']._serialized_end=358
-  _globals['_TRAINER']._serialized_start=427
-  _globals['_TRAINER']._serialized_end=552
+  _globals['_RUNSTEPRESPONSE']._serialized_end=210
+  _globals['_TFTENSOR']._serialized_start=212
+  _globals['_TFTENSOR']._serialized_end=268
+  _globals['_NDARRAY']._serialized_start=270
+  _globals['_NDARRAY']._serialized_end=340
+  _globals['_FINISHREQUEST']._serialized_start=342
+  _globals['_FINISHREQUEST']._serialized_end=357
+  _globals['_FINISHRESPONSE']._serialized_start=359
+  _globals['_FINISHRESPONSE']._serialized_end=375
+  _globals['_TRAINER']._serialized_start=444
+  _globals['_TRAINER']._serialized_end=569
 # @@protoc_insertion_point(module_scope)

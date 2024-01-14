@@ -17,7 +17,7 @@ message RunStepResponse {
     int32 epoch = 1;
     int32 step = 2;
     repeated TFTensor grads = 3;
-    bytes loss = 4;
+    TFTensor loss = 4;
 }
 
 enum DataType {

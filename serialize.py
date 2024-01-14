@@ -17,6 +17,12 @@ def grads_to_proto(grads):
 def grads_from_proto(g_proto):
     return [tf.io.parse_tensor(g.data, out_type=tf_type_from_proto(g.dtype)) for g in g_proto]
 
+def loss_to_proto(loss):
+    return train_pb2.TFTensor(data=tf.io.serialize_tensor(loss).numpy(), dtype=tf_type_to_proto(loss.dtype))
+
+def loss_from_proto(l_proto):
+    return tf.io.parse_tensor(l_proto.data, out_type=tf_type_from_proto(l_proto.dtype))
+
 def np_type_to_proto(dtype):
     if dtype == "float32":
         return train_pb2.DataType.FLOAT_32
