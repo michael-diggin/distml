@@ -6,6 +6,8 @@ import time
 import numpy as np
 import tensorflow as tf
 import serialize
+from retry import retry_on_statuscode
+
 
 class TrainerServer(train_pb2_grpc.TrainerServicer):
     def __init__(self, dist_config, model, loss_fn, optimizer):
@@ -41,10 +43,12 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         for addr in self.workers:
             self._connect_to_node(addr)
     
-    # needs a retry decorator on status.UNAVAILABLE
+    @retry_on_statuscode(0, 5, [grpc.StatusCode.UNAVAILABLE])
     def _connect_to_node(self, addr):
         channel = grpc.insecure_channel(addr)
         stub = train_pb2_grpc.TrainerStub(channel)
+        # establish a connection here
+        stub.HeartBeat(train_pb2.HeartBeatRequest())
         self.worker_stubs[addr] = stub
         self._channels.append(channel)
         return
@@ -102,16 +106,17 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
 
 
     def RunStep(self, request, context):
-        print("Running a Training Step!")
         weights = serialize.weights_from_proto(request.weights)
         self.model.set_weights(weights)
         loss, grads = self._run_model_train_step(request.epoch, request.step)
-        print(f"Local loss: {loss.numpy()}")
         grads = serialize.grads_to_proto(grads)
         loss = serialize.loss_to_proto(loss)
         self.epoch = request.epoch
         resp = train_pb2.RunStepResponse(epoch=request.epoch, step=request.step, loss=loss, grads=grads)
         return resp
+    
+    def HeartBeat(self, request, context):
+        return train_pb2.HeartBeatResponse()
     
     def Finish(self, request, context):
         print("Received finish request, shutting down")
@@ -119,8 +124,7 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         return train_pb2.FinishResponse()
 
     def _run_model_train_step(self, epoch, batch_number):
-        # TODO: get next batch of data
-        x, y = self._get_batch(None, None)
+        x, y = self._get_batch(epoch, batch_number)
         with tf.GradientTape() as tape:
             preds = self.model(x)
             loss = self.loss_fn(y, preds)
@@ -129,8 +133,10 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
 
     def _get_batch(self, epoch, step):
         # for now - just all the data
-        x_batch = self.x_data
-        y_batch = self.y_data
+        length = self.x_data.shape[0]
+        split = [i for i in range(0, length, length//self.batch_split)] + [length]
+        x_batch = self.x_data[split[self.node_int]:split[self.node_int+1], :]
+        y_batch = self.y_data[split[self.node_int]:split[self.node_int+1], :]
         return x_batch, y_batch
 
     def _update_with_grads(self, grads):
@@ -143,3 +149,5 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
             gradients[i] /= len(grads)
         self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
         return
+
+

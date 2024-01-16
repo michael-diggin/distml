@@ -5,6 +5,7 @@ package train;
 service Trainer {
     rpc RunStep(RunStepReuest) returns (RunStepResponse) {}
     rpc Finish(FinishRequest) returns (FinishResponse) {}
+    rpc HeartBeat(HeartBeatRequest) returns (HeartBeatResponse) {}
 }
 
 message RunStepReuest {
@@ -41,6 +42,10 @@ message Ndarray {
 message FinishRequest {}
 
 message FinishResponse {}
+
+message HeartBeatRequest {}
+
+message HeartBeatResponse {}
 
 // Command to generate pb files.
 // python -m grpc_tools.protoc -Iproto --python_out=. --pyi_out=. --grpc_python_out=.  proto/train.proto

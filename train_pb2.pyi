@@ -64,3 +64,11 @@ class FinishRequest(_message.Message):
 class FinishResponse(_message.Message):
     __slots__ = ()
     def __init__(self) -> None: ...
+
+class HeartBeatRequest(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class HeartBeatResponse(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
