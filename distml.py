@@ -2,18 +2,20 @@ import train_pb2_grpc
 import train_pb2
 from concurrent import futures
 import grpc
-import time
+import math
 import numpy as np
 import tensorflow as tf
 import serialize
 from retry import retry_on_statuscode
+from checkpoint import NoopCheckPoint
 
 
 class TrainerServer(train_pb2_grpc.TrainerServicer):
-    def __init__(self, dist_config, model, loss_fn, optimizer):
+    def __init__(self, dist_config, model, loss_fn, optimizer, checkpointer=NoopCheckPoint()):
         self.model = model
         self.loss_fn = loss_fn
         self.optimizer = optimizer
+        self.checkpointer = checkpointer
         self.epoch = 0
         self.batch_number = 0
         self.batch_split = 1 + len(dist_config["servers"]) # 1 leader and other servers
@@ -68,34 +70,48 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
             self.server.wait_for_termination()
             return
         # otherwise
+
+        last_epoch, weights = self.checkpointer.load_latest_weights()
+        if weights:
+            self.model.set_weights(weights)
+        self.epoch = last_epoch
+
         print("-------------- Starting Training --------------")
-        step = 0
-        for epoch in range(epochs):
-            futures = []
-            weights = serialize.weights_to_proto(self.model.get_weights())
-            req = train_pb2.RunStepReuest(epoch=epoch, step=step, weights=weights)
-            for addr in self.workers:
-                futures.append(self._send_train_request(addr, req))
+        num_steps = math.ceil(self.x_data.shape[0] / self.batch_size)
+        losses = []
+        for epoch in range(last_epoch, epochs):
+            epoch_losses = []
+
+            for step in range(num_steps):
+                futures = []
+                weights = serialize.weights_to_proto(self.model.get_weights())
+                req = train_pb2.RunStepReuest(epoch=epoch, step=step, weights=weights)
+                for addr in self.workers:
+                    futures.append(self._send_train_request(addr, req))
             
-            loss, grads = self._run_model_train_step(epoch, step)
-            losses = [loss]
-            gradients = [grads]
-            for f in futures:
-                resp = f.result()
-                f_grads = serialize.grads_from_proto(resp.grads)
-                f_loss = serialize.loss_from_proto(resp.loss)
-                losses.append(f_loss)
-                gradients.append(f_grads)
+                loss, grads = self._run_model_train_step(epoch, step)
+                step_losses = [loss]
+                gradients = [grads]
+                for f in futures:
+                    resp = f.result()
+                    f_grads = serialize.grads_from_proto(resp.grads)
+                    f_loss = serialize.loss_from_proto(resp.loss)
+                    step_losses.append(f_loss)
+                    gradients.append(f_grads)
 
-            epoch_loss = np.mean(losses)
-            print(f"Epoch Loss: {epoch_loss}")
-
-            self._update_with_grads(gradients)
+                self._update_with_grads(gradients)
+                losses.append(np.mean(step_losses))
+                epoch_losses.append(np.mean(step_losses))
+            
+            if epoch%10 == 0:
+                print(f"Epoch {epoch}: {np.mean(epoch_losses)}")
+            
+            if self.checkpointer.should_checkpoint(epoch):
+                self.checkpointer.save_weights(epoch, self.model.get_weights())
 
         print("Finished Training")
         for addr in self.workers:
             self.worker_stubs[addr].Finish(train_pb2.FinishRequest())
-
         self.close()
 
     
@@ -131,12 +147,23 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         grads = tape.gradient(loss, self.model.trainable_variables)
         return loss, grads
 
-    def _get_batch(self, epoch, step):
-        # for now - just all the data
-        length = self.x_data.shape[0]
+    def _get_batch(self, epoch, batch_number):
+        # grabs the next batch_size of data
+        self.batch_number = batch_number
+        start = self.batch_number*self.batch_size
+        end = min((self.batch_number+1)*self.batch_size, self.x_data.shape[0])
+        x_data = self.x_data[start:end,:]
+        y_data = self.y_data[start:end,:]
+
+        # splits it equally amongst the nodes
+        # if the data to split is < number of splits
+        # give all workers that small amount of data
+        length = end-start
+        if length < self.batch_split:
+            return x_data, y_data
         split = [i for i in range(0, length, length//self.batch_split)] + [length]
-        x_batch = self.x_data[split[self.node_int]:split[self.node_int+1], :]
-        y_batch = self.y_data[split[self.node_int]:split[self.node_int+1], :]
+        x_batch = x_data[split[self.node_int]:split[self.node_int+1], :]
+        y_batch = y_data[split[self.node_int]:split[self.node_int+1], :]
         return x_batch, y_batch
 
     def _update_with_grads(self, grads):

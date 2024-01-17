@@ -2,6 +2,7 @@ from distml import TrainerServer
 import os
 import numpy as np
 import tensorflow as tf
+import checkpoint
 
 
 def create_dataset(num):
@@ -11,7 +12,9 @@ def create_dataset(num):
     return X, Y
 
 def create_example_model():
-    model = tf.keras.Sequential([tf.keras.layers.Dense(1)])
+    model = tf.keras.Sequential([
+         tf.keras.layers.InputLayer(shape=(1,)),
+         tf.keras.layers.Dense(1)])
     return model
 
 
@@ -27,14 +30,17 @@ if __name__ == "__main__":
     conf["port"] = port
 
     tf.keras.utils.set_random_seed(111)
-    X, Y = create_dataset(100)
+    X, Y = create_dataset(1000)
     model = create_example_model()
+    
     loss_func = tf.keras.losses.MeanSquaredError()
     opt = tf.keras.optimizers.SGD(learning_rate=0.01)
 
+    checkpointer = checkpoint.FileCheckpoint("chpt", 10)
+
     print(f"Serving on {port}")
-    ts = TrainerServer(conf, model, loss_func, opt)
-    ts.fit(1000, None, X, Y)
+    ts = TrainerServer(conf, model, loss_func, opt, checkpointer)
+    ts.fit(100, 64, X, Y)
 
     print(ts.model.trainable_variables[0].numpy()) # should be near 3
     print(ts.model.trainable_variables[1].numpy()) # should be near 0.5
