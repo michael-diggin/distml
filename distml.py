@@ -173,7 +173,7 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         for i in range(len(grads[0])):
             for g in range(1, len(grads)):
                 gradients[i] += grads[g][i]
-            gradients[i] /= len(grads)
+            gradients[i] /= self.batch_split
         self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
         return
 

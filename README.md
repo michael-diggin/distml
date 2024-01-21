@@ -6,7 +6,6 @@ Multi worker distributed deep learning from scratch
 
 - implement get_next_batch when input is an iterable object/tf.Data type
 - implement metrics aggregation
-- implement checkpointing (weights and epoch)
 - implement checkpointing for optimizer
 - implement losses visualisation
 - Move to bi-directional streaming for larger data transfers
