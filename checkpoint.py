@@ -19,7 +19,7 @@ class NoopCheckpoint():
 class FileCheckpoint():
     # Weights get saved to
     # /directory/epoch/weights.pb
-    def __init__(self, directory, frequency, retain):
+    def __init__(self, directory, frequency, retain=None):
         self.dir = directory
         self.freq = frequency
         self._break = b'<break>' # key word used to mark the end of one string of bytes
@@ -35,13 +35,15 @@ class FileCheckpoint():
         proto_weights = serialize.weights_to_proto(weights)
         bin_data = [pw.SerializeToString() for pw in proto_weights]
         bd = self._break.join(bin_data)
+        os.makedirs(os.path.join(self.dir, str(epoch)))
         file_name = os.path.join(self.dir, str(epoch), "weights.pb")
         with open(file_name, 'wb') as f:
             f.write(bd)
         
-        self._checkpoints.append(epoch)
-        if len(self._checkpoints) > self.num_retain:
-            self._delete_oldest_checkpoint()
+        if self.num_retain:
+            self._checkpoints.append(epoch)
+            if len(self._checkpoints) > self.num_retain:
+                self._delete_oldest_checkpoint()
 
     def load_latest_weights(self):
         if not os.path.exists(self.dir):

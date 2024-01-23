@@ -17,7 +17,7 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         self.optimizer = optimizer
         self.checkpointer = checkpointer
         self.epoch = 0
-        self.batch_number = 0
+        self.step = -1
         self.batch_split = 1 + len(dist_config["servers"]) # 1 leader and other servers
         self.node_ix = dist_config["node"]
         self.node_int = int(self.node_ix)
@@ -62,12 +62,13 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
             self.server.stop(grace=5)
 
     def fit(self, epochs, batch_size=None, x_data=None, y_data=None, dataset=None, num_steps=None):
-        self.batch_size = batch_size
-        self.x_data = x_data
-        self.y_data = y_data
+        assert (x_data is not None or dataset), "At least one of dataset or (x_data, y_data) must be set"
+        if x_data is not None:
+            # creates a dataset object from the input tensors/arrays, sets the batch and the shard
+            dataset = tf.data.Dataset.from_tensor_slices((x_data, y_data)).batch(batch_size).shard(self.batch_split, self.node_int)
+        # otherwise assume that it's batched and sharded?
         self.dataset = dataset
-        self.data_iter = iter(self.dataset) if self.dataset else None
-        assert (self.x_data or self.dataset), "At least one of dataset or (x_data, y_data) must be set"
+        self.data_iter = iter(self.dataset)
         if self.server:
             self.server.start()
             self.server.wait_for_termination()
@@ -81,7 +82,7 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
 
         print("-------------- Starting Training --------------")
         if not num_steps:
-            num_steps = math.ceil(self.x_data.shape[0] / self.batch_size)
+            num_steps = math.floor(x_data.shape[0] / (self.batch_split*batch_size))
         losses = []
         for epoch in range(last_epoch, epochs):
             epoch_losses = []
@@ -107,7 +108,7 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
                 losses.append(np.mean(step_losses))
                 epoch_losses.append(np.mean(step_losses))
             
-            if epoch%10 == 0:
+            if epoch%1 == 0:
                 print(f"Epoch {epoch}: {np.mean(epoch_losses)}")
             
             if self.checkpointer.should_checkpoint(epoch):
@@ -131,7 +132,6 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         loss, grads = self._run_model_train_step(request.epoch, request.step)
         grads = serialize.grads_to_proto(grads)
         loss = serialize.loss_to_proto(loss)
-        self.epoch = request.epoch
         resp = train_pb2.RunStepResponse(epoch=request.epoch, step=request.step, loss=loss, grads=grads)
         return resp
     
@@ -143,49 +143,53 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         self.close()
         return train_pb2.FinishResponse()
 
-    def _run_model_train_step(self, epoch, batch_number):
-        x, y = self._get_batch(epoch, batch_number)
+    def _run_model_train_step(self, epoch, step):
+        x, y = self._get_batch(epoch, step)
         with tf.GradientTape() as tape:
             preds = self.model(x)
             loss = self.loss_fn(y, preds)
         grads = tape.gradient(loss, self.model.trainable_variables)
         return loss, grads
 
-    def _get_batch(self, epoch, batch_number):
-        if self.x_data:
-            return self._get_batch_from_data(epoch, batch_number)
-        return self._get_batch_from_dataset(epoch, batch_number)
-
-    def _get_batch_from_data(self, epoch, batch_number):
+    # this method isn't needed since everything is now wrapped up into
+    # tf.Datasets, which handle the batch and sharding automatically.
+    # def _get_batch_from_data(self, epoch, step):
         # TODO: this can be removed by created a tf Dataset from the arrays
         # once they are passed to fit
         # grabs the next batch_size of data
-        self.batch_number = batch_number
-        start = self.batch_number*self.batch_size
-        end = min((self.batch_number+1)*self.batch_size, self.x_data.shape[0])
-        x_data = self.x_data[start:end,:]
-        y_data = self.y_data[start:end,:]
+    #    self.step = step
+    #    start = self.step*self.batch_size
+    #    end = min((self.step+1)*self.batch_size, self.x_data.shape[0])
+    #    x_data = self.x_data[start:end,:]
+    #    y_data = self.y_data[start:end,:]
 
         # splits it equally amongst the nodes
         # if the data to split is < number of splits
         # give all workers that small amount of data
-        length = end-start
-        if length < self.batch_split:
-            return x_data, y_data
-        split = [i for i in range(0, length, length//self.batch_split)] + [length]
-        x_batch = x_data[split[self.node_int]:split[self.node_int+1], :]
-        y_batch = y_data[split[self.node_int]:split[self.node_int+1], :]
-        return x_batch, y_batch
+    #    length = end-start
+    #    if length < self.batch_split:
+    #        return x_data, y_data
+    #    split = [i for i in range(0, length, length//self.batch_split)] + [length]
+    #    x_batch = x_data[split[self.node_int]:split[self.node_int+1], :]
+    #    y_batch = y_data[split[self.node_int]:split[self.node_int+1], :]
+    #    return x_batch, y_batch
     
-    def _get_batch_from_dataset(self, epoch, batch_number):
-        if (epoch == self.epoch and batch_number == self.batch_number +1):
+    def _get_batch(self, epoch, step):
+        if (epoch == self.epoch and step == self.step +1):
             x, y = next(self.data_iter)
-        elif (epoch != self.epoch and batch_number == 0):
+            self.step = step
+            return x, y
+        else:
+            self.epoch = epoch
+            self.step = step
+            # two possibilities
+            # 1. new epoch, first batch should be returned.
+            # 2. worker node got restarted, iterate to find the right batch
+            #   not very effecient but it is what it is (for now).
             self.data_iter = iter(self.dataset)
             x, y = next(self.data_iter)
-        else:
-            # edge case, batch numbers are different so may need to iterate to find the correct one
-            x, y = None
+            for _ in range(1, step+1):
+                x, y = next(self.data_iter)
         return x, y
 
     def _update_with_grads(self, grads):
@@ -194,8 +198,8 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         gradients = grads[0]
         for i in range(len(grads[0])):
             for g in range(1, len(grads)):
-                gradients[i] += grads[g][i]
-            gradients[i] /= self.batch_split
+                gradients[i] = tf.math.add(gradients[i], grads[g][i])
+            gradients[i] = gradients[i] / self.batch_split
         self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
         return
 

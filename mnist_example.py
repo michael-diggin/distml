@@ -14,7 +14,7 @@ def create_mnist_model():
     ])
     return model
 
-def get_dataset(size):
+def get_dataset(size, test_size=1000):
     (train_images, train_labels), (test_images, test_labels) = mnist.load_data()
 
     shuffled_idx = [i for i in range(train_labels.shape[0])]
@@ -34,7 +34,18 @@ def get_dataset(size):
     train_images = train_images.astype('float32') / 255
     test_images = test_images.astype('float32') / 255
 
-    return train_images[0:size, :], train_labels[0:size, :], test_images, test_labels
+    train_labels = train_labels.astype(np.float32)
+    test_labels = test_labels.astype(np.float32)
+
+    return train_images[0:size, :], train_labels[0:size, :], test_images[0:test_size, :], test_labels[0:test_size, :]
+
+def test_accuracy(preds, true_labels):
+    maxpos = lambda x : np.argmax(x)
+    y_test_max = np.array([maxpos(rec) for rec in true_labels])
+    pred_max = np.array([maxpos(rec) for rec in preds])
+
+    cal_acc = sum(pred_max == y_test_max)/len(pred_max)
+    return cal_acc
 
 
 if __name__ == '__main__':
@@ -49,8 +60,8 @@ if __name__ == '__main__':
 
     tf.keras.utils.set_random_seed(123)
 
-
-    x_train, y_train, x_test, y_test = get_dataset(size=30000)
+    x_train, y_train, x_test, y_test = get_dataset(size=30000, test_size=1000)
+    ds = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(32).shard(3, int(node_ix))
 
     model = create_mnist_model()
     loss_func = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
@@ -60,20 +71,14 @@ if __name__ == '__main__':
 
     print(f"Running on {port}")
     ts = TrainerServer(conf, model, loss_func, opt, checkpointer)
-    # batch size 96 == 32*3 workers
-    ts.fit(30, 3*32, x_train, y_train)
+    # step size = 32*3
+    # num_steps = 30,000/96
+    ts.fit(epochs=15, dataset=ds, num_steps=312)
 
     pred_test = model(x_test)
-
-
-    # Lambda function to identify the index of the maximum value using argmax()
-    maxpos = lambda x : np.argmax(x)
-    y_test_max = np.array([maxpos(rec) for rec in y_test])
-    pred_max = np.array([maxpos(rec) for rec in pred_test])
-
-    cal_acc = sum(pred_max == y_test_max)/len(pred_max)
+    cal_acc = test_accuracy(pred_test, y_test)
     print(f"Test set accuracy: {cal_acc}")
-    # Achieved 96.38% accuracy on the test set
+    # Achieves ~95.8% accuracy on the test set
     
 
 
