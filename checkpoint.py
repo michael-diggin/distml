@@ -3,7 +3,7 @@ import os
 import train_pb2
 
 
-class NoopCheckPoint():
+class NoopCheckpoint():
     def __init__(self):
         pass
 
@@ -18,13 +18,13 @@ class NoopCheckPoint():
 
 class FileCheckpoint():
     # Weights get saved to
-    # /directory/epoch.pb
-    def __init__(self, directory, frequency):
+    # /directory/epoch/weights.pb
+    def __init__(self, directory, frequency, retain):
         self.dir = directory
         self.freq = frequency
-        self._break = b'<break>'
-        # TODO add a 'retain' flag for number of checkpoints to retain
-        # would speed up fetching the latest checkpoint
+        self._break = b'<break>' # key word used to mark the end of one string of bytes
+        self.num_retain = retain
+        self._checkpoints = []
 
     def should_checkpoint(self, epoch):
         return not epoch%self.freq
@@ -35,9 +35,13 @@ class FileCheckpoint():
         proto_weights = serialize.weights_to_proto(weights)
         bin_data = [pw.SerializeToString() for pw in proto_weights]
         bd = self._break.join(bin_data)
-        file_name = os.path.join(self.dir, str(epoch)) + ".pb"
+        file_name = os.path.join(self.dir, str(epoch), "weights.pb")
         with open(file_name, 'wb') as f:
             f.write(bd)
+        
+        self._checkpoints.append(epoch)
+        if len(self._checkpoints) > self.num_retain:
+            self._delete_oldest_checkpoint()
 
     def load_latest_weights(self):
         if not os.path.exists(self.dir):
@@ -45,10 +49,10 @@ class FileCheckpoint():
         files = os.listdir(self.dir)
         if len(files) == 0:
             return 0, None
-        files.sort(key=lambda x: int(x.split('.')[0]))
+        files.sort(key=lambda x: int(x))
         latest = files[-1]
-        epoch = int(latest.split('.')[0])
-        with open(os.path.join(self.dir, latest), 'rb') as f:
+        epoch = int(latest)
+        with open(os.path.join(self.dir, latest, "weights.pb"), 'rb') as f:
             bin_data = f.read()
         bin_weights = bin_data.split(self._break)
         proto_weights = [train_pb2.Ndarray() for _ in range(len(bin_weights))]
@@ -57,4 +61,8 @@ class FileCheckpoint():
         weights_arrays = serialize.weights_from_proto(proto_weights)
         return epoch, weights_arrays
 
-
+    def _delete_oldest_checkpoint(self):
+        oldest = self._checkpoints.pop(0)
+        fname = os.path.join(self.dir, str(oldest), "weights.pb")
+        os.remove(fname)
+        os.rmdir(os.path.join(self.dir, str(oldest)))

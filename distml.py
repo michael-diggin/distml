@@ -7,11 +7,11 @@ import numpy as np
 import tensorflow as tf
 import serialize
 from retry import retry_on_statuscode
-from checkpoint import NoopCheckPoint
+from checkpoint import NoopCheckpoint
 
 
 class TrainerServer(train_pb2_grpc.TrainerServicer):
-    def __init__(self, dist_config, model, loss_fn, optimizer, checkpointer=NoopCheckPoint()):
+    def __init__(self, dist_config, model, loss_fn, optimizer, checkpointer=NoopCheckpoint()):
         self.model = model
         self.loss_fn = loss_fn
         self.optimizer = optimizer
@@ -61,10 +61,13 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         if self.server:
             self.server.stop(grace=5)
 
-    def fit(self, epochs, batch_size, x_data, y_data):
+    def fit(self, epochs, batch_size=None, x_data=None, y_data=None, dataset=None, num_steps=None):
         self.batch_size = batch_size
         self.x_data = x_data
         self.y_data = y_data
+        self.dataset = dataset
+        self.data_iter = iter(self.dataset) if self.dataset else None
+        assert (self.x_data or self.dataset), "At least one of dataset or (x_data, y_data) must be set"
         if self.server:
             self.server.start()
             self.server.wait_for_termination()
@@ -77,7 +80,8 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         self.epoch = last_epoch
 
         print("-------------- Starting Training --------------")
-        num_steps = math.ceil(self.x_data.shape[0] / self.batch_size)
+        if not num_steps:
+            num_steps = math.ceil(self.x_data.shape[0] / self.batch_size)
         losses = []
         for epoch in range(last_epoch, epochs):
             epoch_losses = []
@@ -148,6 +152,13 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         return loss, grads
 
     def _get_batch(self, epoch, batch_number):
+        if self.x_data:
+            return self._get_batch_from_data(epoch, batch_number)
+        return self._get_batch_from_dataset(epoch, batch_number)
+
+    def _get_batch_from_data(self, epoch, batch_number):
+        # TODO: this can be removed by created a tf Dataset from the arrays
+        # once they are passed to fit
         # grabs the next batch_size of data
         self.batch_number = batch_number
         start = self.batch_number*self.batch_size
@@ -165,6 +176,17 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         x_batch = x_data[split[self.node_int]:split[self.node_int+1], :]
         y_batch = y_data[split[self.node_int]:split[self.node_int+1], :]
         return x_batch, y_batch
+    
+    def _get_batch_from_dataset(self, epoch, batch_number):
+        if (epoch == self.epoch and batch_number == self.batch_number +1):
+            x, y = next(self.data_iter)
+        elif (epoch != self.epoch and batch_number == 0):
+            self.data_iter = iter(self.dataset)
+            x, y = next(self.data_iter)
+        else:
+            # edge case, batch numbers are different so may need to iterate to find the correct one
+            x, y = None
+        return x, y
 
     def _update_with_grads(self, grads):
         # combine the N sets of grads
