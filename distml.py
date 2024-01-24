@@ -12,19 +12,22 @@ from checkpoint import NoopCheckpoint
 
 class TrainerServer(train_pb2_grpc.TrainerServicer):
     def __init__(self, dist_config, model, loss_fn, optimizer, checkpointer=NoopCheckpoint()):
+        self.conf = dist_config
         self.model = model
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.checkpointer = checkpointer
         self.epoch = 0
         self.step = -1
+        self.current_batch = None
         self.batch_split = 1 + len(dist_config["servers"]) # 1 leader and other servers
         self.node_ix = dist_config["node"]
         self.node_int = int(self.node_ix)
         self.server = None
-        self._channels = []
+        self._channels = {}
         self.workers = [] # list of other server worker addresses
         self.worker_stubs = {}
+        self.grpc_timeout = 60 #seconds
         if dist_config["leader"] == dist_config["node"]:
             self._setup_leader(dist_config)
         else:
@@ -47,16 +50,27 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
     
     @retry_on_statuscode(0, 5, [grpc.StatusCode.UNAVAILABLE])
     def _connect_to_node(self, addr):
+        existing_stub = self.worker_stubs.get(addr, None)
+        if existing_stub:
+            try:
+                existing_stub.HeartBeat(train_pb2.HeartBeatRequest(), timeout=5)
+                # stub already exists and works, continue
+                return
+            except:
+                # connection is faulty, close it's channel and create a new one
+                self._channels[addr].close()
+                pass
+
         channel = grpc.insecure_channel(addr)
         stub = train_pb2_grpc.TrainerStub(channel)
         # establish a connection here
-        stub.HeartBeat(train_pb2.HeartBeatRequest())
+        stub.HeartBeat(train_pb2.HeartBeatRequest(), timeout=5)
         self.worker_stubs[addr] = stub
-        self._channels.append(channel)
+        self._channels[addr] = channel
         return
         
     def close(self):
-        for channel in self._channels:
+        for channel in self._channels.values():
             channel.close()
         if self.server:
             self.server.stop(grace=5)
@@ -84,26 +98,11 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         if not num_steps:
             num_steps = math.floor(x_data.shape[0] / (self.batch_split*batch_size))
         losses = []
-        for epoch in range(last_epoch, epochs):
+        for epoch in range(last_epoch+1, epochs):
             epoch_losses = []
 
             for step in range(num_steps):
-                futures = []
-                weights = serialize.weights_to_proto(self.model.get_weights())
-                req = train_pb2.RunStepReuest(epoch=epoch, step=step, weights=weights)
-                for addr in self.workers:
-                    futures.append(self._send_train_request(addr, req))
-            
-                loss, grads = self._run_model_train_step(epoch, step)
-                step_losses = [loss]
-                gradients = [grads]
-                for f in futures:
-                    resp = f.result()
-                    f_grads = serialize.grads_from_proto(resp.grads)
-                    f_loss = serialize.loss_from_proto(resp.loss)
-                    step_losses.append(f_loss)
-                    gradients.append(f_grads)
-
+                gradients, step_losses = self._run_distributed_step(epoch, step)
                 self._update_with_grads(gradients)
                 losses.append(np.mean(step_losses))
                 epoch_losses.append(np.mean(step_losses))
@@ -119,10 +118,34 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
             self.worker_stubs[addr].Finish(train_pb2.FinishRequest())
         self.close()
 
+    @retry_on_statuscode(0, 5, [grpc.StatusCode.UNAVAILABLE, grpc.StatusCode.DEADLINE_EXCEEDED])
+    def _run_distributed_step(self, epoch, step):
+        try:
+            futures = []
+            weights = serialize.weights_to_proto(self.model.get_weights())
+            req = train_pb2.RunStepReuest(epoch=epoch, step=step, weights=weights)
+            for addr in self.workers:
+                futures.append(self._send_train_request(addr, req))
+
+            loss, grads = self._run_model_train_step(epoch, step)
+            step_losses = [loss]
+            gradients = [grads]
+            for f in futures:
+                resp = f.result()
+                f_grads = serialize.grads_from_proto(resp.grads)
+                f_loss = serialize.loss_from_proto(resp.loss)
+                step_losses.append(f_loss)
+                gradients.append(f_grads)
+            return gradients, step_losses
+        except grpc.RpcError as grpc_error:
+            if grpc_error.code() in [grpc.StatusCode.UNAVAILABLE, grpc.StatusCode.DEADLINE_EXCEEDED]:
+                # refresh all unhealthy connections
+                self._setup_leader(self.conf)
+                raise grpc_error
     
     def _send_train_request(self, addr, req):
         stub = self.worker_stubs[addr]
-        resp_future = stub.RunStep.future(req)
+        resp_future = stub.RunStep.future(req, timeout=self.grpc_timeout)
         return resp_future
 
 
@@ -151,33 +174,16 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         grads = tape.gradient(loss, self.model.trainable_variables)
         return loss, grads
 
-    # this method isn't needed since everything is now wrapped up into
-    # tf.Datasets, which handle the batch and sharding automatically.
-    # def _get_batch_from_data(self, epoch, step):
-        # TODO: this can be removed by created a tf Dataset from the arrays
-        # once they are passed to fit
-        # grabs the next batch_size of data
-    #    self.step = step
-    #    start = self.step*self.batch_size
-    #    end = min((self.step+1)*self.batch_size, self.x_data.shape[0])
-    #    x_data = self.x_data[start:end,:]
-    #    y_data = self.y_data[start:end,:]
-
-        # splits it equally amongst the nodes
-        # if the data to split is < number of splits
-        # give all workers that small amount of data
-    #    length = end-start
-    #    if length < self.batch_split:
-    #        return x_data, y_data
-    #    split = [i for i in range(0, length, length//self.batch_split)] + [length]
-    #    x_batch = x_data[split[self.node_int]:split[self.node_int+1], :]
-    #    y_batch = y_data[split[self.node_int]:split[self.node_int+1], :]
-    #    return x_batch, y_batch
-    
+    # using tf.Dataset allows for not needing to worry about sharding the data batch here.
     def _get_batch(self, epoch, step):
+        if (epoch == self.epoch and step == self.step and self.current_batch is not None):
+            # small optimisation
+            # in case a node restarted and a training step gets retried
+            return self.current_batch
         if (epoch == self.epoch and step == self.step +1):
             x, y = next(self.data_iter)
             self.step = step
+            self.current_batch = (x, y)
             return x, y
         else:
             self.epoch = epoch
@@ -190,6 +196,7 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
             x, y = next(self.data_iter)
             for _ in range(1, step+1):
                 x, y = next(self.data_iter)
+        self.current_batch = (x, y)
         return x, y
 
     def _update_with_grads(self, grads):

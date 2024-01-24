@@ -72,7 +72,7 @@ if __name__ == '__main__':
     print(f"Running on {port}")
     ts = TrainerServer(conf, model, loss_func, opt, checkpointer)
     # step size = 32*3
-    # num_steps = 30,000/96
+    # num_steps = floor(30,000/96)
     ts.fit(epochs=15, dataset=ds, num_steps=312)
 
     pred_test = model(x_test)

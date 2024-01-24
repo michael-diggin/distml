@@ -30,12 +30,11 @@ class FileCheckpoint():
         return not epoch%self.freq
 
     def save_weights(self, epoch, weights):
-        if not os.path.exists(self.dir):
-            os.makedirs(self.dir)
+        if not os.path.exists(os.path.join(self.dir, str(epoch))):
+            os.makedirs(os.path.join(self.dir, str(epoch)))
         proto_weights = serialize.weights_to_proto(weights)
         bin_data = [pw.SerializeToString() for pw in proto_weights]
         bd = self._break.join(bin_data)
-        os.makedirs(os.path.join(self.dir, str(epoch)))
         file_name = os.path.join(self.dir, str(epoch), "weights.pb")
         with open(file_name, 'wb') as f:
             f.write(bd)

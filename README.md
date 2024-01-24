@@ -10,6 +10,7 @@ It's essentially a synchronous all-reduce distributed set up.
 One node is the 'leader' and pushes weights to each worker node. They all run a single training step
 on a sharded batch of input data, and return the gradients to the leader.
 The leader accumulates those gradients, performs the update step, and repeats.
+It can handle some distributed failures (e.g node restarts) fairly well.
 
 A simple mnist example can be run locally:
 - `NODE=2 PORT=1232 python3 mnist_example.py` in one terminal window
@@ -21,7 +22,6 @@ printing out the accuracy on a portion of the test set.
 
 
 ### to do (no particular order):
-- handle main training loop when replicas are down, and set gRPC timeouts
 - implement metrics aggregation
 - implement checkpointing for optimizer
 - implement losses visualisation
