@@ -3,9 +3,10 @@ syntax = "proto3";
 package train;
 
 service Trainer {
-    rpc RunStep(RunStepReuest) returns (RunStepResponse) {}
-    rpc Finish(FinishRequest) returns (FinishResponse) {}
     rpc HeartBeat(HeartBeatRequest) returns (HeartBeatResponse) {}
+    rpc RunStep(RunStepReuest) returns (RunStepResponse) {}
+    rpc RunValidation(RunValidationRequest) returns (RunValidationResponse) {}
+    rpc Finish(FinishRequest) returns (FinishResponse) {}
 }
 
 message RunStepReuest {
@@ -18,6 +19,16 @@ message RunStepResponse {
     int32 epoch = 1;
     int32 step = 2;
     repeated TFTensor grads = 3;
+    TFTensor loss = 4;
+}
+
+message RunValidationRequest {
+    int32 epoch = 1;
+    int32 num_steps = 2;
+    repeated Ndarray weights = 3;
+}
+
+message RunValidationResponse {
     TFTensor loss = 4;
 }
 

@@ -14,31 +14,35 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0btrain.proto\x12\x05train\"M\n\rRunStepReuest\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\x1f\n\x07weights\x18\x03 \x03(\x0b\x32\x0e.train.Ndarray\"m\n\x0fRunStepResponse\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\x1e\n\x05grads\x18\x03 \x03(\x0b\x32\x0f.train.TFTensor\x12\x1d\n\x04loss\x18\x04 \x01(\x0b\x32\x0f.train.TFTensor\"8\n\x08TFTensor\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x1e\n\x05\x64type\x18\x02 \x01(\x0e\x32\x0f.train.DataType\"F\n\x07Ndarray\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x1e\n\x05\x64type\x18\x02 \x01(\x0e\x32\x0f.train.DataType\x12\r\n\x05shape\x18\x03 \x03(\x05\"\x0f\n\rFinishRequest\"\x10\n\x0e\x46inishResponse\"\x12\n\x10HeartBeatRequest\"\x13\n\x11HeartBeatResponse*A\n\x08\x44\x61taType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x0c\n\x08\x46LOAT_16\x10\x01\x12\x0c\n\x08\x46LOAT_32\x10\x02\x12\x0c\n\x08\x46LOAT_64\x10\x03\x32\xbf\x01\n\x07Trainer\x12\x39\n\x07RunStep\x12\x14.train.RunStepReuest\x1a\x16.train.RunStepResponse\"\x00\x12\x37\n\x06\x46inish\x12\x14.train.FinishRequest\x1a\x15.train.FinishResponse\"\x00\x12@\n\tHeartBeat\x12\x17.train.HeartBeatRequest\x1a\x18.train.HeartBeatResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0btrain.proto\x12\x05train\"M\n\rRunStepReuest\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\x1f\n\x07weights\x18\x03 \x03(\x0b\x32\x0e.train.Ndarray\"m\n\x0fRunStepResponse\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x0c\n\x04step\x18\x02 \x01(\x05\x12\x1e\n\x05grads\x18\x03 \x03(\x0b\x32\x0f.train.TFTensor\x12\x1d\n\x04loss\x18\x04 \x01(\x0b\x32\x0f.train.TFTensor\"Y\n\x14RunValidationRequest\x12\r\n\x05\x65poch\x18\x01 \x01(\x05\x12\x11\n\tnum_steps\x18\x02 \x01(\x05\x12\x1f\n\x07weights\x18\x03 \x03(\x0b\x32\x0e.train.Ndarray\"6\n\x15RunValidationResponse\x12\x1d\n\x04loss\x18\x04 \x01(\x0b\x32\x0f.train.TFTensor\"8\n\x08TFTensor\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x1e\n\x05\x64type\x18\x02 \x01(\x0e\x32\x0f.train.DataType\"F\n\x07Ndarray\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x1e\n\x05\x64type\x18\x02 \x01(\x0e\x32\x0f.train.DataType\x12\r\n\x05shape\x18\x03 \x03(\x05\"\x0f\n\rFinishRequest\"\x10\n\x0e\x46inishResponse\"\x12\n\x10HeartBeatRequest\"\x13\n\x11HeartBeatResponse*A\n\x08\x44\x61taType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x0c\n\x08\x46LOAT_16\x10\x01\x12\x0c\n\x08\x46LOAT_32\x10\x02\x12\x0c\n\x08\x46LOAT_64\x10\x03\x32\x8d\x02\n\x07Trainer\x12@\n\tHeartBeat\x12\x17.train.HeartBeatRequest\x1a\x18.train.HeartBeatResponse\"\x00\x12\x39\n\x07RunStep\x12\x14.train.RunStepReuest\x1a\x16.train.RunStepResponse\"\x00\x12L\n\rRunValidation\x12\x1b.train.RunValidationRequest\x1a\x1c.train.RunValidationResponse\"\x00\x12\x37\n\x06\x46inish\x12\x14.train.FinishRequest\x1a\x15.train.FinishResponse\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'train_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
-  _globals['_DATATYPE']._serialized_start=418
-  _globals['_DATATYPE']._serialized_end=483
+  _globals['_DATATYPE']._serialized_start=565
+  _globals['_DATATYPE']._serialized_end=630
   _globals['_RUNSTEPREUEST']._serialized_start=22
   _globals['_RUNSTEPREUEST']._serialized_end=99
   _globals['_RUNSTEPRESPONSE']._serialized_start=101
   _globals['_RUNSTEPRESPONSE']._serialized_end=210
-  _globals['_TFTENSOR']._serialized_start=212
-  _globals['_TFTENSOR']._serialized_end=268
-  _globals['_NDARRAY']._serialized_start=270
-  _globals['_NDARRAY']._serialized_end=340
-  _globals['_FINISHREQUEST']._serialized_start=342
-  _globals['_FINISHREQUEST']._serialized_end=357
-  _globals['_FINISHRESPONSE']._serialized_start=359
-  _globals['_FINISHRESPONSE']._serialized_end=375
-  _globals['_HEARTBEATREQUEST']._serialized_start=377
-  _globals['_HEARTBEATREQUEST']._serialized_end=395
-  _globals['_HEARTBEATRESPONSE']._serialized_start=397
-  _globals['_HEARTBEATRESPONSE']._serialized_end=416
-  _globals['_TRAINER']._serialized_start=486
-  _globals['_TRAINER']._serialized_end=677
+  _globals['_RUNVALIDATIONREQUEST']._serialized_start=212
+  _globals['_RUNVALIDATIONREQUEST']._serialized_end=301
+  _globals['_RUNVALIDATIONRESPONSE']._serialized_start=303
+  _globals['_RUNVALIDATIONRESPONSE']._serialized_end=357
+  _globals['_TFTENSOR']._serialized_start=359
+  _globals['_TFTENSOR']._serialized_end=415
+  _globals['_NDARRAY']._serialized_start=417
+  _globals['_NDARRAY']._serialized_end=487
+  _globals['_FINISHREQUEST']._serialized_start=489
+  _globals['_FINISHREQUEST']._serialized_end=504
+  _globals['_FINISHRESPONSE']._serialized_start=506
+  _globals['_FINISHRESPONSE']._serialized_end=522
+  _globals['_HEARTBEATREQUEST']._serialized_start=524
+  _globals['_HEARTBEATREQUEST']._serialized_end=542
+  _globals['_HEARTBEATRESPONSE']._serialized_start=544
+  _globals['_HEARTBEATRESPONSE']._serialized_end=563
+  _globals['_TRAINER']._serialized_start=633
+  _globals['_TRAINER']._serialized_end=902
 # @@protoc_insertion_point(module_scope)

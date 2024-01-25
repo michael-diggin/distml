@@ -75,7 +75,7 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         if self.server:
             self.server.stop(grace=5)
 
-    def fit(self, epochs, batch_size=None, x_data=None, y_data=None, dataset=None, num_steps=None):
+    def fit(self, epochs, batch_size=None, x_data=None, y_data=None, dataset=None, num_steps=None, validation_dataset=None, validation_steps=None):
         assert (x_data is not None or dataset), "At least one of dataset or (x_data, y_data) must be set"
         if x_data is not None:
             # creates a dataset object from the input tensors/arrays, sets the batch and the shard
@@ -83,6 +83,8 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         # otherwise assume that it's batched and sharded?
         self.dataset = dataset
         self.data_iter = iter(self.dataset)
+        self.val_dataset = validation_dataset
+        self.val_steps = validation_steps
         if self.server:
             self.server.start()
             self.server.wait_for_termination()
@@ -107,11 +109,16 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
                 losses.append(np.mean(step_losses))
                 epoch_losses.append(np.mean(step_losses))
             
-            if epoch%1 == 0:
-                print(f"Epoch {epoch}: {np.mean(epoch_losses)}")
+            output = f"Epoch {epoch}: {np.mean(epoch_losses)}"
             
             if self.checkpointer.should_checkpoint(epoch):
                 self.checkpointer.save_weights(epoch, self.model.get_weights())
+
+            # run some validation if val_dataset is exists
+            if self.val_dataset:
+                val_loss = self._run_distributed_validation(epoch, self.model.get_weights())
+                output += f"\tValidation loss = {val_loss}"
+            print(output)
 
         print("Finished Training")
         for addr in self.workers:
@@ -147,7 +154,11 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         stub = self.worker_stubs[addr]
         resp_future = stub.RunStep.future(req, timeout=self.grpc_timeout)
         return resp_future
-
+    
+    def _send_val_request(self, addr, req):
+        stub = self.worker_stubs[addr]
+        resp_future = stub.RunValidation.future(req, timeout=120)
+        return resp_future
 
     def RunStep(self, request, context):
         weights = serialize.weights_from_proto(request.weights)
@@ -158,6 +169,24 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         resp = train_pb2.RunStepResponse(epoch=request.epoch, step=request.step, loss=loss, grads=grads)
         return resp
     
+    def RunValidation(self, request, context):
+        weights = serialize.weights_from_proto(request.weights)
+        self.model.set_weights(weights)
+        num_steps = request.num_steps
+        loss = self._run_validation(num_steps)
+        resp = train_pb2.RunValidationResponse(loss=serialize.loss_to_proto(loss))
+        return resp
+    
+    def _run_validation(self, num_steps):
+        val_iter = iter(self.val_dataset)
+        losses = []
+        for _ in range(num_steps):
+            x, y = next(val_iter)
+            preds = self.model(x)
+            losses.append(self.loss_fn(y, preds))
+        loss = tf.add_n(losses)
+        return loss
+
     def HeartBeat(self, request, context):
         return train_pb2.HeartBeatResponse()
     
@@ -210,4 +239,19 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
         return
 
+    def _run_distributed_validation(self, epoch, weights):
+        futures = []
+        w = serialize.weights_to_proto(weights)
+        req = train_pb2.RunValidationRequest(epoch=epoch, num_steps=self.val_steps, weights=w)
+        for addr in self.workers:
+            futures.append(self._send_val_request(addr, req))
+        losses = [self._run_validation(self.val_steps)]
+        
+        for f in futures:
+            resp = f.result()
+            losses.append(serialize.loss_from_proto(resp.loss))
+        loss = tf.add_n(losses).numpy() / (self.batch_split*self.val_steps)
+        return loss
+        
+        
 

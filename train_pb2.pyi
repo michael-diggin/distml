@@ -39,6 +39,22 @@ class RunStepResponse(_message.Message):
     loss: TFTensor
     def __init__(self, epoch: _Optional[int] = ..., step: _Optional[int] = ..., grads: _Optional[_Iterable[_Union[TFTensor, _Mapping]]] = ..., loss: _Optional[_Union[TFTensor, _Mapping]] = ...) -> None: ...
 
+class RunValidationRequest(_message.Message):
+    __slots__ = ("epoch", "num_steps", "weights")
+    EPOCH_FIELD_NUMBER: _ClassVar[int]
+    NUM_STEPS_FIELD_NUMBER: _ClassVar[int]
+    WEIGHTS_FIELD_NUMBER: _ClassVar[int]
+    epoch: int
+    num_steps: int
+    weights: _containers.RepeatedCompositeFieldContainer[Ndarray]
+    def __init__(self, epoch: _Optional[int] = ..., num_steps: _Optional[int] = ..., weights: _Optional[_Iterable[_Union[Ndarray, _Mapping]]] = ...) -> None: ...
+
+class RunValidationResponse(_message.Message):
+    __slots__ = ("loss",)
+    LOSS_FIELD_NUMBER: _ClassVar[int]
+    loss: TFTensor
+    def __init__(self, loss: _Optional[_Union[TFTensor, _Mapping]] = ...) -> None: ...
+
 class TFTensor(_message.Message):
     __slots__ = ("data", "dtype")
     DATA_FIELD_NUMBER: _ClassVar[int]

@@ -14,27 +14,44 @@ class TrainerStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.HeartBeat = channel.unary_unary(
+                '/train.Trainer/HeartBeat',
+                request_serializer=train__pb2.HeartBeatRequest.SerializeToString,
+                response_deserializer=train__pb2.HeartBeatResponse.FromString,
+                )
         self.RunStep = channel.unary_unary(
                 '/train.Trainer/RunStep',
                 request_serializer=train__pb2.RunStepReuest.SerializeToString,
                 response_deserializer=train__pb2.RunStepResponse.FromString,
+                )
+        self.RunValidation = channel.unary_unary(
+                '/train.Trainer/RunValidation',
+                request_serializer=train__pb2.RunValidationRequest.SerializeToString,
+                response_deserializer=train__pb2.RunValidationResponse.FromString,
                 )
         self.Finish = channel.unary_unary(
                 '/train.Trainer/Finish',
                 request_serializer=train__pb2.FinishRequest.SerializeToString,
                 response_deserializer=train__pb2.FinishResponse.FromString,
                 )
-        self.HeartBeat = channel.unary_unary(
-                '/train.Trainer/HeartBeat',
-                request_serializer=train__pb2.HeartBeatRequest.SerializeToString,
-                response_deserializer=train__pb2.HeartBeatResponse.FromString,
-                )
 
 
 class TrainerServicer(object):
     """Missing associated documentation comment in .proto file."""
 
+    def HeartBeat(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def RunStep(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RunValidation(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -46,29 +63,28 @@ class TrainerServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def HeartBeat(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
 
 def add_TrainerServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'HeartBeat': grpc.unary_unary_rpc_method_handler(
+                    servicer.HeartBeat,
+                    request_deserializer=train__pb2.HeartBeatRequest.FromString,
+                    response_serializer=train__pb2.HeartBeatResponse.SerializeToString,
+            ),
             'RunStep': grpc.unary_unary_rpc_method_handler(
                     servicer.RunStep,
                     request_deserializer=train__pb2.RunStepReuest.FromString,
                     response_serializer=train__pb2.RunStepResponse.SerializeToString,
             ),
+            'RunValidation': grpc.unary_unary_rpc_method_handler(
+                    servicer.RunValidation,
+                    request_deserializer=train__pb2.RunValidationRequest.FromString,
+                    response_serializer=train__pb2.RunValidationResponse.SerializeToString,
+            ),
             'Finish': grpc.unary_unary_rpc_method_handler(
                     servicer.Finish,
                     request_deserializer=train__pb2.FinishRequest.FromString,
                     response_serializer=train__pb2.FinishResponse.SerializeToString,
-            ),
-            'HeartBeat': grpc.unary_unary_rpc_method_handler(
-                    servicer.HeartBeat,
-                    request_deserializer=train__pb2.HeartBeatRequest.FromString,
-                    response_serializer=train__pb2.HeartBeatResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -79,6 +95,23 @@ def add_TrainerServicer_to_server(servicer, server):
  # This class is part of an EXPERIMENTAL API.
 class Trainer(object):
     """Missing associated documentation comment in .proto file."""
+
+    @staticmethod
+    def HeartBeat(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/train.Trainer/HeartBeat',
+            train__pb2.HeartBeatRequest.SerializeToString,
+            train__pb2.HeartBeatResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def RunStep(request,
@@ -98,6 +131,23 @@ class Trainer(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
+    def RunValidation(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/train.Trainer/RunValidation',
+            train__pb2.RunValidationRequest.SerializeToString,
+            train__pb2.RunValidationResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
     def Finish(request,
             target,
             options=(),
@@ -111,22 +161,5 @@ class Trainer(object):
         return grpc.experimental.unary_unary(request, target, '/train.Trainer/Finish',
             train__pb2.FinishRequest.SerializeToString,
             train__pb2.FinishResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
-    def HeartBeat(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/train.Trainer/HeartBeat',
-            train__pb2.HeartBeatRequest.SerializeToString,
-            train__pb2.HeartBeatResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

@@ -61,7 +61,12 @@ if __name__ == '__main__':
     tf.keras.utils.set_random_seed(123)
 
     x_train, y_train, x_test, y_test = get_dataset(size=30000, test_size=1000)
-    ds = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(32).shard(3, int(node_ix))
+    x = x_train[:28000]
+    y = y_train[:28000]
+    x_val = x_train[28000:]
+    y_val = y_train[28000:] 
+    ds = tf.data.Dataset.from_tensor_slices((x, y)).batch(32).shard(3, int(node_ix))
+    val_ds = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(64).shard(3, int(node_ix))
 
     model = create_mnist_model()
     loss_func = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
@@ -72,8 +77,9 @@ if __name__ == '__main__':
     print(f"Running on {port}")
     ts = TrainerServer(conf, model, loss_func, opt, checkpointer)
     # step size = 32*3
-    # num_steps = floor(30,000/96)
-    ts.fit(epochs=15, dataset=ds, num_steps=312)
+    # num_steps = floor(28,000/96)
+    # val_steps = floor(20000/64*3)
+    ts.fit(epochs=15, dataset=ds, num_steps=290, validation_dataset=val_ds, validation_steps=10)
 
     pred_test = model(x_test)
     cal_acc = test_accuracy(pred_test, y_test)
