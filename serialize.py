@@ -1,5 +1,6 @@
 # file containing helper functions for converting
 # TF tensors (grads) and numpy ndarrays (weights) to proto and back
+import logging
 
 import train_pb2
 import numpy as np
@@ -51,7 +52,7 @@ def np_type_to_proto(dtype):
         return train_pb2.DataType.INT_32
     if dtype == "int64":
         return train_pb2.DataType.INT_64
-    print(f"Unknown np dtype: {dtype}")
+    logging.warning(f"Unknown np dtype: {dtype}")
     return train_pb2.DataType.UNKNOWN
 
 def tf_type_to_proto(dtype):
@@ -59,7 +60,7 @@ def tf_type_to_proto(dtype):
         return train_pb2.DataType.FLOAT_32
     if dtype == "float64":
         return train_pb2.DataType.FLOAT_64
-    print(f"Unknown tf dtype: {dtype}")
+    logging.warning(f"Unknown tf dtype: {dtype}")
     return train_pb2.DataType.UNKNOWN
 
 def np_type_from_proto(dtype):
@@ -71,7 +72,7 @@ def np_type_from_proto(dtype):
         return np.int32
     if dtype == train_pb2.DataType.INT_64:
         return np.int64
-    print(f"Unhandled dtype: {dtype}")
+    logging.warning(f"Unhandled dtype: {dtype}")
     return np.float32
 
 def tf_type_from_proto(dtype):
@@ -79,5 +80,5 @@ def tf_type_from_proto(dtype):
         return tf.float32
     if dtype == train_pb2.DataType.FLOAT_64:
         return tf.float64
-    print(f"Unhandled tf dtype: {dtype}")
+    logging.warning(f"Unhandled tf dtype: {dtype}")
     return tf.float32

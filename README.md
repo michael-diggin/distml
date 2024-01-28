@@ -26,7 +26,5 @@ printing out the accuracy on a portion of the test set.
 - add early stopping
 - implement losses visualisation
 - add bi-directional streaming for larger data transfers
-- support for regularization
-- use proper logging
 - add checkpointing to GCS
 - set up k8s manifests and run on GKE for some dataset

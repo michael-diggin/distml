@@ -1,5 +1,6 @@
 import time
 import grpc
+import logging
 
 # retry decorator
 # if max_retries = 0 will retry indefinitely
@@ -15,12 +16,12 @@ def retry_on_statuscode(max_retries, wait_time, status_codes):
                 except grpc.RpcError as grpc_error:
                     if status_codes and grpc_error.code() in status_codes:
                         retries += 1
-                        print(f"Retrying {func}...")
+                        logging.info(f"Retrying {func}...")
                         time.sleep(wait_time)
                     else:
                         raise grpc_error
                 except Exception as e:
-                    print(f"Got an error: {e}")
+                    logging.error(f"Got an error: {e}")
                     raise e
             else:
               raise Exception(f"Max retries of function {func} exceeded")

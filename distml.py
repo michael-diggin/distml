@@ -3,6 +3,7 @@ import train_pb2
 from concurrent import futures
 import grpc
 import math
+import logging
 import numpy as np
 import tensorflow as tf
 import serialize
@@ -17,7 +18,7 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.checkpointer = checkpointer
-        self.epoch = -1
+        self.epoch = 0
         self.step = -1
         self.current_batch = None
         self.batch_split = 1 + len(dist_config["servers"]) # 1 leader and other servers
@@ -91,14 +92,18 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
             return
         # otherwise
 
+        start_epoch = 0
         last_epoch = self._load_latest_checkpoint()
-        self.epoch = last_epoch if last_epoch else -1
+        if last_epoch:
+            start_epoch = last_epoch+1
+            self.epoch = start_epoch
+        
 
-        print("-------------- Starting Training --------------")
+        logging.info("-------------- Starting Training --------------")
         if not num_steps:
             num_steps = math.floor(x_data.shape[0] / (self.batch_split*batch_size))
         losses = []
-        for epoch in range(last_epoch+1, epochs):
+        for epoch in range(start_epoch, epochs):
             epoch_losses = []
 
             for step in range(num_steps):
@@ -120,7 +125,7 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
                 output += f"\tValidation loss = {val_loss}"
             print(output)
 
-        print("Finished Training")
+        logging.info("Finished Training")
         for addr in self.workers:
             self.worker_stubs[addr].Finish(train_pb2.FinishRequest())
         self.close()
@@ -205,7 +210,7 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         return train_pb2.HeartBeatResponse()
     
     def Finish(self, request, context):
-        print("Received finish request, shutting down")
+        logging.info("Received finish request, shutting down")
         self.close()
         return train_pb2.FinishResponse()
 
@@ -214,6 +219,8 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         with tf.GradientTape() as tape:
             preds = self.model(x)
             loss = self.loss_fn(y, preds)
+            if self.model.losses:
+                loss = loss + tf.reduce_sum(self.model.losses)
         grads = tape.gradient(loss, self.model.trainable_variables)
         return loss, grads
 

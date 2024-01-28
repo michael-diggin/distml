@@ -1,5 +1,6 @@
 from distml import TrainerServer
 import os
+import logging
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.datasets import mnist
@@ -49,6 +50,8 @@ def test_accuracy(preds, true_labels):
 
 
 if __name__ == '__main__':
+    logging.basicConfig()
+
     conf = {
         "leader": "0",
         "servers": ["localhost:1231", "localhost:1232"],
@@ -72,7 +75,7 @@ if __name__ == '__main__':
     loss_func = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
     opt = tf.keras.optimizers.Adam(learning_rate=0.001)
 
-    checkpointer = checkpoint.FileCheckpoint("chpt", 1)
+    checkpointer = checkpoint.FileCheckpoint("chpt", 1, 5)
 
     print(f"Running on {port}")
     ts = TrainerServer(conf, model, loss_func, opt, checkpointer)

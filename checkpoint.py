@@ -60,7 +60,7 @@ class FileCheckpoint():
 
     def load_latest_weights(self):
         if not os.path.exists(self.dir):
-            return 0, None
+            return 0, None, None
         files = os.listdir(self.dir)
         if len(files) == 0:
             return 0, None, None
