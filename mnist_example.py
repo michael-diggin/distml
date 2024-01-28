@@ -72,7 +72,7 @@ if __name__ == '__main__':
     loss_func = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
     opt = tf.keras.optimizers.Adam(learning_rate=0.001)
 
-    checkpointer = checkpoint.FileCheckpoint("chpt", 10)
+    checkpointer = checkpoint.FileCheckpoint("chpt", 1)
 
     print(f"Running on {port}")
     ts = TrainerServer(conf, model, loss_func, opt, checkpointer)

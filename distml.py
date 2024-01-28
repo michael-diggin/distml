@@ -17,7 +17,7 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.checkpointer = checkpointer
-        self.epoch = 0
+        self.epoch = -1
         self.step = -1
         self.current_batch = None
         self.batch_split = 1 + len(dist_config["servers"]) # 1 leader and other servers
@@ -91,10 +91,8 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
             return
         # otherwise
 
-        last_epoch, weights = self.checkpointer.load_latest_weights()
-        if weights:
-            self.model.set_weights(weights)
-        self.epoch = last_epoch
+        last_epoch = self._load_latest_checkpoint()
+        self.epoch = last_epoch if last_epoch else -1
 
         print("-------------- Starting Training --------------")
         if not num_steps:
@@ -112,7 +110,9 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
             output = f"Epoch {epoch}: {np.mean(epoch_losses)}"
             
             if self.checkpointer.should_checkpoint(epoch):
-                self.checkpointer.save_weights(epoch, self.model.get_weights())
+                opt_state = {}
+                self.optimizer.save_own_variables(opt_state)
+                self.checkpointer.save_weights(epoch, self.model.get_weights(), opt_state)
 
             # run some validation if val_dataset is exists
             if self.val_dataset:
@@ -124,6 +124,20 @@ class TrainerServer(train_pb2_grpc.TrainerServicer):
         for addr in self.workers:
             self.worker_stubs[addr].Finish(train_pb2.FinishRequest())
         self.close()
+
+    def _load_latest_checkpoint(self):
+        last_epoch, weights, opt_weights = self.checkpointer.load_latest_weights()
+        if weights:
+            if opt_weights:
+                # need to show the optimizer what variable sizes it needs to have
+                # and set model weights afterwards
+                zero_grads = [tf.zeros_like(v) for v in self.model.trainable_variables]
+                self.optimizer.apply_gradients(zip(zero_grads, self.model.trainable_variables))
+                opt_state = {str(i): opt_weights[i] for i in range(len(opt_weights))}
+                self.optimizer.load_own_variables(opt_state)
+            self.model.set_weights(weights)
+            return last_epoch
+        return None
 
     @retry_on_statuscode(0, 5, [grpc.StatusCode.UNAVAILABLE, grpc.StatusCode.DEADLINE_EXCEEDED])
     def _run_distributed_step(self, epoch, step):

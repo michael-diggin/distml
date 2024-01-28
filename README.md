@@ -23,7 +23,6 @@ printing out the accuracy on a portion of the test set.
 
 ### to do (no particular order):
 - implement metrics aggregation
-- implement checkpointing for optimizer
 - add early stopping
 - implement losses visualisation
 - add bi-directional streaming for larger data transfers

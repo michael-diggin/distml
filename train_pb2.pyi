@@ -12,10 +12,14 @@ class DataType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     FLOAT_16: _ClassVar[DataType]
     FLOAT_32: _ClassVar[DataType]
     FLOAT_64: _ClassVar[DataType]
+    INT_32: _ClassVar[DataType]
+    INT_64: _ClassVar[DataType]
 UNKNOWN: DataType
 FLOAT_16: DataType
 FLOAT_32: DataType
 FLOAT_64: DataType
+INT_32: DataType
+INT_64: DataType
 
 class RunStepReuest(_message.Message):
     __slots__ = ("epoch", "step", "weights")

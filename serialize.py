@@ -23,11 +23,34 @@ def loss_to_proto(loss):
 def loss_from_proto(l_proto):
     return tf.io.parse_tensor(l_proto.data, out_type=tf_type_from_proto(l_proto.dtype))
 
+def opt_weights_to_proto(opt_weights):
+    pw = []
+    for ow in opt_weights:
+        if type(ow) != np.ndarray:
+            ow = np.array(ow)
+        pw.append(train_pb2.Ndarray(data=ow.tobytes(), dtype=np_type_to_proto(ow.dtype), shape=list(ow.shape)))
+    return pw
+
+def opt_weights_from_proto(opt_proto):
+    ow = []
+    for pw in opt_proto:
+        data = np.frombuffer(pw.data, dtype=np_type_from_proto(pw.dtype))
+        if pw.shape == []:
+            ow.append(data.item())
+        else:
+            ow.append(data.reshape(pw.shape))
+    return ow
+
+
 def np_type_to_proto(dtype):
     if dtype == "float32":
         return train_pb2.DataType.FLOAT_32
     if dtype == "float64":
         return train_pb2.DataType.FLOAT_64
+    if dtype == "int32":
+        return train_pb2.DataType.INT_32
+    if dtype == "int64":
+        return train_pb2.DataType.INT_64
     print(f"Unknown np dtype: {dtype}")
     return train_pb2.DataType.UNKNOWN
 
@@ -44,7 +67,10 @@ def np_type_from_proto(dtype):
         return np.float32
     if dtype == train_pb2.DataType.FLOAT_64:
         return np.float64
-    # should somehow handle this weird case
+    if dtype == train_pb2.DataType.INT_32:
+        return np.int32
+    if dtype == train_pb2.DataType.INT_64:
+        return np.int64
     print(f"Unhandled dtype: {dtype}")
     return np.float32
 
